@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trình phát | YouTube → MP3</title>
+  <link rel="stylesheet" href="/assets/css/tailwind.css" />
+</head>
+
+<body class="min-h-screen bg-gray-50">
+  <header class="border-b bg-gradient-to-r from-black to-amber-700">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg sm:text-xl font-semibold text-amber-600">Trình phát</h1>
+        <p class="text-xs sm:text-sm text-gray-600">Chọn thư mục, duyệt và phát MP3 đã lưu</p>
+      </div>
+    </div>
+  </header>
+  <main class="px-4 py-6">
+    <div class="max-w-4xl mx-auto space-y-4">
+      <div class="flex flex-wrap gap-3 items-end bg-white border rounded-md p-3 sm:p-4 shadow-sm">
+        <div class="w-full sm:flex-1 min-w-[180px]">
+          <label for="folderSelect" class="block text-sm font-medium text-black">Chọn folder</label>
+          <select id="folderSelect"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <option value=""></option>
+          </select>
+        </div>
+      </div>
+
+      <div class="border bg-white rounded-md px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
+        <audio id="player" preload="metadata" controlslist="nodownload" class="hidden"></audio>
+
+        <div class="flex items-center gap-2 w-full py-2 sm:py-3 px-1">
+          <span id="currentTime" class="text-xs sm:text-sm text-black">0:00</span>
+          <input id="seek" type="range" min="0" max="100" value="0" class="flex-1">
+          <span id="duration" class="text-xs sm:text-sm text-black">0:00</span>
+        </div>
+
+        <div class="mt-2 sm:mt-3 flex items-center justify-between w-full py-2 sm:py-3 px-1">
+          <div style="width: 20%;">
+            <input type="checkbox" id="playAllCheckbox">
+            <label for="playAllCheckbox" class="text-xs sm:text-sm text-black">Phát tất cả</label>
+          </div>
+          <div class="flex justify-between" style="width: 40%;">
+            <button id="prevBtn"
+              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Trước</button>
+            <button id="playPauseBtn"
+              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-blue-700">Phát</button>
+            <button id="nextBtn"
+              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Sau</button>
+          </div>
+          <div class="flex justify-between" style="width: 20%;">
+            <input style="width: 75%;" id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
+            <span id="volumePercent" class="text-xs sm:text-sm text-black">100%</span>
+          </div>
+        </div>
+      </div>
+      <div id="currentName" style="text-align: center;" class="flex-1 text-xs sm:text-sm text-black truncate">---
+      </div>
+      <hr>
+
+      <hr>
+      <section id="filesSection" class="space-y-3">
+        <div class="w-full">
+          <label for="searchInput" class="block text-sm font-medium text-black">Tìm theo tên file</label>
+          <input id="searchInput" type="text" placeholder="Nhập tên..."
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+        </div>
+        <div id="filesList" class="space-y-2"></div>
+        <div id="counts" class="text-xs sm:text-sm text-black"></div>
+        <div id="emptyState" class="hidden text-xs sm:text-sm text-gray-500">Không có file MP3 trong thư mục này</div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const state = { files: [], filtered: [], currentIndex: -1 };
+    function renderCounts() {
+      const el = document.getElementById('counts');
+      el.textContent = state.filtered.length ? `${state.filtered.length} files` : '';
+    }
+    function renderFiles() {
+      const list = document.getElementById('filesList');
+      list.innerHTML = '';
+      state.filtered.forEach((it, idx) => {
+        const row = document.createElement('div');
+        const active = idx === state.currentIndex;
+        row.className = (active ? 'ring-2 ring-amber-500 bg-amber-50 ' : '') + 'p-2 sm:p-3 rounded-md border bg-white flex items-center gap-2 sm:gap-3 hover:bg-amber-50 transition';
+        row.addEventListener('click', () => playIndex(idx));
+        const name = document.createElement('div');
+        name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
+        name.textContent = it.name || '';
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-2';
+        const play = document.createElement('button');
+        play.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700';
+        play.textContent = 'Phát';
+        play.addEventListener('click', (e) => { e.stopPropagation(); playIndex(idx); });
+        actions.appendChild(play);
+        row.appendChild(name);
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+      document.getElementById('emptyState').classList.toggle('hidden', state.filtered.length > 0);
+      renderCounts();
+    }
+    function normalizeText(s) {
+      return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+    }
+    function matchesTokens(name, q) {
+      const nameNorm = normalizeText(name);
+      const tokens = normalizeText(q).split(/\s+/).filter(Boolean);
+      return tokens.every(t => nameNorm.includes(t));
+    }
+    function applyFilter() {
+      const q = (document.getElementById('searchInput').value || '');
+      state.filtered = q.trim() ? state.files.filter(f => matchesTokens(f.name || '', q)) : state.files.slice();
+      renderFiles();
+    }
+    async function fetchFolders() {
+      try {
+        const resp = await fetch('/api/folders/list');
+        const data = await resp.json();
+        const sel = document.getElementById('folderSelect');
+        sel.innerHTML = '<option value="">Chọn thư mục</option>' + (Array.isArray(data.items) ? data.items.map(n => `<option value="${n}">${n}</option>`).join('') : '');
+        try {
+          const saved = localStorage.getItem('player_selected_folder') || '';
+          if (saved && Array.isArray(data.items) && data.items.includes(saved)) sel.value = saved;
+        } catch (_) { }
+      } catch (e) { }
+    }
+    async function fetchFiles() {
+      const sel = document.getElementById('folderSelect');
+      const folder = sel.value || '';
+      try {
+        const resp = await fetch(`/api/folders/files?folder=${encodeURIComponent(folder)}`);
+        const data = await resp.json();
+        state.files = Array.isArray(data.items) ? data.items : [];
+        applyFilter();
+        restoreLast();
+      } catch (e) { }
+    }
+    function restoreLast() {
+      try {
+        const folder = (document.getElementById('folderSelect').value || '');
+        const raw = localStorage.getItem('player_last');
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (!obj || obj.folder !== folder) return;
+        const idx = state.filtered.findIndex(f => (f.name || '') === obj.name);
+        if (idx >= 0) playIndex(idx, Number(obj.time) || 0);
+      } catch (_) { }
+    }
+    function playIndex(idx, startTime) {
+      if (idx < 0 || idx >= state.filtered.length) return;
+      state.currentIndex = idx;
+      const it = state.filtered[idx];
+      const audio = document.getElementById('player');
+      const nameEl = document.getElementById('currentName');
+      nameEl.textContent = it.name || '';
+      audio.src = it.url || '';
+      if (typeof startTime === 'number' && startTime > 0) {
+        const setStart = () => {
+          audio.removeEventListener('loadedmetadata', setStart);
+          try { audio.currentTime = Math.max(0, Math.min(startTime, (audio.duration || startTime))); } catch (_) { }
+        };
+        audio.addEventListener('loadedmetadata', setStart);
+      }
+      try {
+        const folder = (document.getElementById('folderSelect').value || '');
+        localStorage.setItem('player_last', JSON.stringify({ folder, name: it.name || '' }));
+      } catch (_) { }
+      audio.play().catch(() => { });
+    }
+    function next() { if (state.currentIndex + 1 < state.filtered.length) playIndex(state.currentIndex + 1); }
+    function prev() { if (state.currentIndex - 1 >= 0) playIndex(state.currentIndex - 1); }
+    document.getElementById('folderSelect').addEventListener('change', () => {
+      const sel = document.getElementById('folderSelect');
+      const val = sel.value || '';
+      try { localStorage.setItem('player_selected_folder', val); } catch (_) { }
+      fetchFiles();
+    });
+    document.getElementById('searchInput').addEventListener('input', applyFilter);
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    document.getElementById('player').addEventListener('ended', () => {
+      const playAll = document.getElementById('playAllCheckbox');
+      if (playAll && playAll.checked) next();
+    });
+    const playAllCb = document.getElementById('playAllCheckbox');
+    try {
+      const savedPlayAll = localStorage.getItem('player_play_all');
+      if (savedPlayAll !== null) playAllCb.checked = savedPlayAll === '1';
+    } catch (_) { }
+    playAllCb.addEventListener('change', () => {
+      try { localStorage.setItem('player_play_all', playAllCb.checked ? '1' : '0'); } catch (_) { }
+    });
+    (function setupTimeSave() {
+      const audio = document.getElementById('player');
+      let lastSave = 0;
+      audio.addEventListener('timeupdate', () => {
+        const now = Date.now();
+        if (now - lastSave < 1500) return;
+        lastSave = now;
+        try {
+          const folder = (document.getElementById('folderSelect').value || '');
+          const it = state.filtered[state.currentIndex];
+          if (!it) return;
+          localStorage.setItem('player_last', JSON.stringify({ folder, name: it.name || '', time: audio.currentTime || 0 }));
+        } catch (_) { }
+      });
+    })();
+    (function setupCustomControls() {
+      const audio = document.getElementById('player');
+      const playPauseBtn = document.getElementById('playPauseBtn');
+      const seek = document.getElementById('seek');
+      const vol = document.getElementById('volume');
+      const volPct = document.getElementById('volumePercent');
+      const cur = document.getElementById('currentTime');
+      const dur = document.getElementById('duration');
+
+      function fmt(t) {
+        t = Math.max(0, Math.floor(t || 0));
+        const m = Math.floor(t / 60), s = t % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      }
+
+      audio.addEventListener('loadedmetadata', () => {
+        dur.textContent = fmt(audio.duration || 0);
+      });
+      audio.addEventListener('timeupdate', () => {
+        cur.textContent = fmt(audio.currentTime || 0);
+        const d = audio.duration || 0;
+        seek.value = d ? String(Math.round((audio.currentTime / d) * 100)) : '0';
+      });
+      playPauseBtn.addEventListener('click', () => {
+        if (audio.paused) {
+          audio.play().then(() => { playPauseBtn.textContent = 'Tạm dừng'; }).catch(() => { });
+        } else {
+          audio.pause();
+          playPauseBtn.textContent = 'Phát';
+        }
+      });
+      seek.addEventListener('input', () => {
+        const d = audio.duration || 0;
+        if (d) audio.currentTime = Math.max(0, Math.min(d, (Number(seek.value) / 100) * d));
+      });
+      vol.addEventListener('input', () => {
+        audio.volume = Math.max(0, Math.min(1, Number(vol.value)));
+        if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
+        try { localStorage.setItem('player_volume', String(audio.volume || 0)); } catch (_) { }
+      });
+      audio.addEventListener('volumechange', () => {
+        if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
+        try { localStorage.setItem('player_volume', String(audio.volume || 0)); } catch (_) { }
+      });
+      if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
+      try {
+        const savedVol = localStorage.getItem('player_volume');
+        if (savedVol !== null) {
+          const v = Math.max(0, Math.min(1, Number(savedVol)));
+          audio.volume = v;
+          vol.value = String(v);
+          if (volPct) volPct.textContent = `${Math.round(v * 100)}%`;
+        }
+      } catch (_) { }
+      audio.addEventListener('play', () => { playPauseBtn.textContent = 'Tạm dừng'; });
+      audio.addEventListener('pause', () => { playPauseBtn.textContent = 'Phát'; });
+    })();
+    fetchFolders().then(fetchFiles);
+  </script>
+</body>
+
+</html>

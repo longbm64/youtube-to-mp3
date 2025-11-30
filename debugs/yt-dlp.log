@@ -1,0 +1,7 @@
+
+[spawn] /Users/DangLong/apps/youtube-to-mp3/bin/yt-dlp https://www.youtube.com/watch?v=9hz1-gGhmLI -f bestaudio/best --extract-audio --audio-format mp3 --postprocessor-args -b:a 128k --ffmpeg-location /Users/DangLong/apps/youtube-to-mp3/node_modules/ffmpeg-static/ffmpeg --extractor-args youtube:player_client=default -o - --quiet --no-progress --no-mtime
+WARNING: Post-Processor arguments given without specifying name. The arguments will be given to all post-processors
+WARNING: [youtube] 9hz1-gGhmLI: Some web_safari client https formats have been skipped as they are missing a url. YouTube is forcing SABR streaming for this client. See  https://github.com/yt-dlp/yt-dlp/issues/12482  for more details
+WARNING: [youtube] 9hz1-gGhmLI: Some web client https formats have been skipped as they are missing a url. YouTube is forcing SABR streaming for this client. See  https://github.com/yt-dlp/yt-dlp/issues/12482  for more details
+
+[close] code=0 signal=null

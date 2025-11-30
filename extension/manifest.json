@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube → MP3 Adder",
+  "version": "0.1.0",
+  "description": "Thêm link video từ youtube.com vào server lưu MP3.",
+  "action": {
+    "default_title": "Thêm vào YouTube → MP3"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:3001/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

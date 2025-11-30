@@ -1,0 +1,25 @@
+{
+    "name": "youtube-to-mp3",
+    "version": "0.1.0",
+    "private": true,
+    "type": "commonjs",
+    "scripts": {
+        "dev": "node src/server.js",
+        "build:css": "tailwindcss -c tailwind.config.js -i ./src/styles/input.css -o ./public/assets/css/tailwind.css --minify"
+    },
+    "dependencies": {
+        "@distube/ytdl-core": "^4.16.12",
+        "express": "^4.21.2",
+        "ffmpeg-static": "^5.3.0",
+        "fluent-ffmpeg": "^2.1.3",
+        "ytdl-core": "^4.11.5"
+    },
+    "devDependencies": {
+        "tailwindcss": "^3.4.18"
+    },
+    "main": "tailwind.config.js",
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": ""
+}
