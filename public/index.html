@@ -96,7 +96,7 @@
         row.addEventListener('click', () => { name.classList.toggle('truncate'); });
         const name = document.createElement('div');
         name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
-        name.textContent = it.name || '';
+        name.textContent = (it.name || '').replace(/\.mp3$/i, '');
         name.title = it.name || '';
         const actions = document.createElement('div');
         actions.className = 'flex items-center gap-2';
@@ -226,7 +226,7 @@
       const it = state.filtered[idx];
       const audio = document.getElementById('player');
       const nameEl = document.getElementById('currentName');
-      nameEl.textContent = it.name || '';
+      nameEl.textContent = (it.name || '').replace(/\.mp3$/i, '');
       audio.src = it.url || '';
       if (typeof startTime === 'number' && startTime > 0) {
         const setStart = () => {

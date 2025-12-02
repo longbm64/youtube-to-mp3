@@ -267,7 +267,7 @@
                 row.className = 'p-2 sm:p-3 rounded-md border bg-white flex items-center gap-2 sm:gap-3 hover:bg-amber-50 transition';
                 const name = document.createElement('div');
                 name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
-                name.textContent = it.name || '';
+                name.textContent = (it.name || '').replace(/\.mp3$/i, '');
                 name.title = it.name || '';
                 const actions = document.createElement('div');
                 actions.className = 'flex items-center gap-2';
