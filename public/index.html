@@ -68,7 +68,9 @@
           <input id="searchInput" type="text" placeholder="Nhập tên..."
             class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
+        <div id="paginationTop" class="flex items-center justify-between text-xs sm:text-sm mt-2"></div>
         <div id="filesList" class="space-y-2"></div>
+        <div id="pagination" class="flex items-center justify-between text-xs sm:text-sm mt-2"></div>
         <div id="counts" class="text-xs sm:text-sm text-black"></div>
         <div id="emptyState" class="hidden text-xs sm:text-sm text-gray-500">Không có file MP3 trong thư mục này</div>
       </section>
@@ -76,7 +78,7 @@
   </main>
 
   <script>
-    const state = { files: [], filtered: [], currentIndex: -1 };
+    const state = { files: [], filtered: [], currentIndex: -1, page: 1, pageSize: 10 };
     function renderCounts() {
       const el = document.getElementById('counts');
       el.textContent = state.filtered.length ? `${state.filtered.length} files` : '';
@@ -84,11 +86,18 @@
     function renderFiles() {
       const list = document.getElementById('filesList');
       list.innerHTML = '';
-      state.filtered.forEach((it, idx) => {
+      const totalPages = Math.max(1, Math.ceil((state.filtered.length || 0) / state.pageSize));
+      if (state.page > totalPages) state.page = totalPages;
+      if (state.page < 1) state.page = 1;
+      const start = (state.page - 1) * state.pageSize;
+      const end = start + state.pageSize;
+      const pageItems = state.filtered.slice(start, end);
+      pageItems.forEach((it, idx) => {
         const row = document.createElement('div');
-        const active = idx === state.currentIndex;
+        const globalIdx = start + idx;
+        const active = globalIdx === state.currentIndex;
         row.className = (active ? 'ring-2 ring-amber-500 bg-amber-50 ' : '') + 'p-2 sm:p-3 rounded-md border bg-white flex items-center gap-2 sm:gap-3 hover:bg-amber-50 transition';
-        row.addEventListener('click', () => playIndex(idx));
+        row.addEventListener('click', () => playIndex(globalIdx));
         const name = document.createElement('div');
         name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
         name.textContent = it.name || '';
@@ -97,7 +106,7 @@
         const play = document.createElement('button');
         play.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700';
         play.textContent = 'Phát';
-        play.addEventListener('click', (e) => { e.stopPropagation(); playIndex(idx); });
+        play.addEventListener('click', (e) => { e.stopPropagation(); playIndex(globalIdx); });
         actions.appendChild(play);
         row.appendChild(name);
         row.appendChild(actions);
@@ -105,6 +114,39 @@
       });
       document.getElementById('emptyState').classList.toggle('hidden', state.filtered.length > 0);
       renderCounts();
+      renderPaginationInto('paginationTop');
+      renderPaginationInto('pagination');
+    }
+    function renderPaginationInto(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const total = state.filtered.length || 0;
+      const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+      if (state.page > totalPages) state.page = totalPages;
+      if (state.page < 1) state.page = 1;
+      const page = state.page;
+      el.innerHTML = '';
+      const left = document.createElement('div');
+      left.className = 'flex items-center gap-2';
+      const right = document.createElement('div');
+      right.className = 'text-black';
+      const prev = document.createElement('button');
+      prev.textContent = 'Trang trước';
+      prev.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50';
+      prev.disabled = page <= 1;
+      prev.addEventListener('click', () => { if (state.page > 1) { state.page--; renderFiles(); } });
+      const next = document.createElement('button');
+      next.textContent = 'Trang sau';
+      next.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50';
+      next.disabled = page >= totalPages;
+      next.addEventListener('click', () => { if (state.page < totalPages) { state.page++; renderFiles(); } });
+      const info = document.createElement('span');
+      info.textContent = total ? `Trang ${page}/${totalPages}` : '';
+      left.appendChild(prev);
+      left.appendChild(next);
+      right.appendChild(info);
+      el.appendChild(left);
+      el.appendChild(right);
     }
     function normalizeText(s) {
       return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
@@ -117,6 +159,7 @@
     function applyFilter() {
       const q = (document.getElementById('searchInput').value || '');
       state.filtered = q.trim() ? state.files.filter(f => matchesTokens(f.name || '', q)) : state.files.slice();
+      state.page = 1;
       renderFiles();
     }
     async function fetchFolders() {
