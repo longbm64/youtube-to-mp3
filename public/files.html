@@ -71,6 +71,20 @@
                         <button type="button" id="installExtBtn"
                             class="rounded-md bg-amber-600 text-white px-3 py-2 text-sm hover:bg-amber-700">Cài tiện ích
                             Chrome: YouTube → MP3</button>
+                        <div id="extGuide" class="hidden mt-3 p-3 border rounded-md bg-white text-sm text-gray-700">
+                            <p class="mb-2">Chrome chặn cài trực tiếp file .crx (CRX_REQUIRED_PROOF_MISSING). Vui lòng
+                                cài offline theo cách:</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li>Mở <span class="font-medium">chrome://extensions</span> và bật <span
+                                        class="font-medium">Developer mode</span></li>
+                                <li>Bấm <span class="font-medium">Load unpacked</span> và chọn thư mục <span
+                                        class="font-medium">extension</span> trong dự án</li>
+                                <li>Tùy chọn: tải file <a href="/extension.crx"
+                                        class="text-indigo-600 hover:underline">extension.crx</a> để lưu</li>
+                                <li>Sau khi cài, mở Options của extension để nhập <span
+                                        class="font-medium">SERVER_BASE</span></li>
+                            </ul>
+                        </div>
                     </div>
                 </form>
 
@@ -104,18 +118,10 @@
             navigator.serviceWorker.register('/sw.js');
         }
         const installBtn = document.getElementById('installExtBtn');
+        const extGuide = document.getElementById('extGuide');
         if (installBtn) {
             installBtn.addEventListener('click', () => {
-                const storeUrl = 'https://chromewebstore.google.com/';
-                try {
-                    if (window.chrome && chrome.webstore && typeof chrome.webstore.install === 'function') {
-                        chrome.webstore.install(storeUrl, () => { }, () => { window.open(storeUrl, '_blank'); });
-                    } else {
-                        window.open(storeUrl, '_blank');
-                    }
-                } catch (e) {
-                    window.open(storeUrl, '_blank');
-                }
+                if (extGuide) extGuide.classList.remove('hidden');
             });
         }
     </script>

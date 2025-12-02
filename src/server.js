@@ -14,6 +14,19 @@ app.use((req, res, next) => {
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
 });
+// Phục vụ file extension.crx trước static để tránh 404 từ middleware static
+app.get('/extension.crx', (req, res) => {
+    try {
+        const fs = require('fs');
+        const filePath = path.join(__dirname, '..', 'extension.crx');
+        if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+        res.setHeader('Content-Type', 'application/x-chrome-extension');
+        res.setHeader('Content-Disposition', 'attachment; filename="extension.crx"');
+        res.sendFile(filePath);
+    } catch (_) {
+        res.status(500).send('Server error');
+    }
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Đăng ký route chuyển đổi
@@ -157,6 +170,7 @@ app.get('/', (req, res) => {
 app.get('/files', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'files.html'));
 });
+
 
 // Khởi động server
 const PORT = process.env.PORT || 3001;
