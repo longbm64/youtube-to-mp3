@@ -5,6 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube → MP3</title>
+    <meta name="theme-color" content="#f59e0b" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/assets/css/tailwind.css" />
 </head>
 
@@ -64,6 +66,12 @@
                         </button>
                         <span id="status" class="text-sm text-gray-600"></span>
                     </div>
+
+                    <div class="mt-4">
+                        <button type="button" id="installExtBtn"
+                            class="rounded-md bg-amber-600 text-white px-3 py-2 text-sm hover:bg-amber-700">Cài tiện ích
+                            Chrome: YouTube → MP3</button>
+                    </div>
                 </form>
 
                 <section id="result" class="mt-6 hidden">
@@ -91,6 +99,26 @@
     </main>
 
     <script src="/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+        const installBtn = document.getElementById('installExtBtn');
+        if (installBtn) {
+            installBtn.addEventListener('click', () => {
+                const storeUrl = 'https://chromewebstore.google.com/';
+                try {
+                    if (window.chrome && chrome.webstore && typeof chrome.webstore.install === 'function') {
+                        chrome.webstore.install(storeUrl, () => { }, () => { window.open(storeUrl, '_blank'); });
+                    } else {
+                        window.open(storeUrl, '_blank');
+                    }
+                } catch (e) {
+                    window.open(storeUrl, '_blank');
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>

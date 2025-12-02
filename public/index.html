@@ -5,6 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Trình phát | YouTube → MP3</title>
+  <meta name="theme-color" content="#f59e0b" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/assets/css/tailwind.css" />
 </head>
 
@@ -39,22 +41,16 @@
         </div>
 
         <div class="mt-2 sm:mt-3 flex items-center justify-between w-full py-2 sm:py-3 px-1">
-          <div style="width: 20%;">
-            <input type="checkbox" id="playAllCheckbox">
-            <label for="playAllCheckbox" class="text-xs sm:text-sm text-black">Phát tất cả</label>
-          </div>
-          <div class="flex justify-between" style="width: 40%;">
-            <button id="prevBtn"
-              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Trước</button>
-            <button id="playPauseBtn"
-              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-blue-700">Phát</button>
-            <button id="nextBtn"
-              class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Sau</button>
-          </div>
-          <div class="flex justify-between" style="width: 20%;">
-            <input style="width: 75%;" id="volume" type="range" min="0" max="1" step="0.01" value="1" class="w-24">
-            <span id="volumePercent" class="text-xs sm:text-sm text-black">100%</span>
-          </div>
+          <button id="prevBtn"
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Trước</button>
+          <button id="playPauseBtn"
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-blue-700">Phát</button>
+          <button id="nextBtn"
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Sau</button>
+        </div>
+        <div class="flex items-center gap-2" style="margin-top: 10px;">
+          <input type="checkbox" id="playAllCheckbox">
+          <label for="playAllCheckbox" class="text-xs sm:text-sm text-black">Phát tất cả</label>
         </div>
       </div>
       <div id="currentName" style="text-align: center;" class="flex-1 text-xs sm:text-sm text-black truncate">---
@@ -97,16 +93,31 @@
         const globalIdx = start + idx;
         const active = globalIdx === state.currentIndex;
         row.className = (active ? 'ring-2 ring-amber-500 bg-amber-50 ' : '') + 'p-2 sm:p-3 rounded-md border bg-white flex items-center gap-2 sm:gap-3 hover:bg-amber-50 transition';
-        row.addEventListener('click', () => playIndex(globalIdx));
+        row.addEventListener('click', () => { name.classList.toggle('truncate'); });
         const name = document.createElement('div');
         name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
         name.textContent = it.name || '';
+        name.title = it.name || '';
         const actions = document.createElement('div');
         actions.className = 'flex items-center gap-2';
         const play = document.createElement('button');
         play.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700';
-        play.textContent = 'Phát';
-        play.addEventListener('click', (e) => { e.stopPropagation(); playIndex(globalIdx); });
+        play.dataset.role = 'row-play';
+        play.dataset.idx = String(globalIdx);
+        {
+          const audio = document.getElementById('player');
+          play.textContent = (active && audio && !audio.paused) ? 'Tạm dừng' : 'Phát';
+        }
+        play.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const audio = document.getElementById('player');
+          if (globalIdx === state.currentIndex) {
+            if (audio && audio.paused) { audio.play().catch(() => { }); }
+            else if (audio) { audio.pause(); }
+          } else {
+            playIndex(globalIdx);
+          }
+        });
         actions.appendChild(play);
         row.appendChild(name);
         row.appendChild(actions);
@@ -114,8 +125,18 @@
       });
       document.getElementById('emptyState').classList.toggle('hidden', state.filtered.length > 0);
       renderCounts();
+      updateRowPlayButtons();
       renderPaginationInto('paginationTop');
       renderPaginationInto('pagination');
+    }
+    function updateRowPlayButtons() {
+      const audio = document.getElementById('player');
+      const btns = document.querySelectorAll('#filesList button[data-role="row-play"]');
+      btns.forEach((b) => {
+        const idx = Number(b.dataset.idx || '-1');
+        const isActive = idx === state.currentIndex;
+        b.textContent = (audio && isActive && !audio.paused) ? 'Tạm dừng' : 'Phát';
+      });
     }
     function renderPaginationInto(id) {
       const el = document.getElementById(id);
@@ -259,10 +280,10 @@
       const audio = document.getElementById('player');
       const playPauseBtn = document.getElementById('playPauseBtn');
       const seek = document.getElementById('seek');
-      const vol = document.getElementById('volume');
-      const volPct = document.getElementById('volumePercent');
+
       const cur = document.getElementById('currentTime');
       const dur = document.getElementById('duration');
+      audio.volume = 1;
 
       function fmt(t) {
         t = Math.max(0, Math.floor(t || 0));
@@ -277,6 +298,7 @@
         cur.textContent = fmt(audio.currentTime || 0);
         const d = audio.duration || 0;
         seek.value = d ? String(Math.round((audio.currentTime / d) * 100)) : '0';
+        updateRowPlayButtons();
       });
       playPauseBtn.addEventListener('click', () => {
         if (audio.paused) {
@@ -285,33 +307,21 @@
           audio.pause();
           playPauseBtn.textContent = 'Phát';
         }
+        updateRowPlayButtons();
       });
       seek.addEventListener('input', () => {
         const d = audio.duration || 0;
         if (d) audio.currentTime = Math.max(0, Math.min(d, (Number(seek.value) / 100) * d));
       });
-      vol.addEventListener('input', () => {
-        audio.volume = Math.max(0, Math.min(1, Number(vol.value)));
-        if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
-        try { localStorage.setItem('player_volume', String(audio.volume || 0)); } catch (_) { }
-      });
-      audio.addEventListener('volumechange', () => {
-        if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
-        try { localStorage.setItem('player_volume', String(audio.volume || 0)); } catch (_) { }
-      });
-      if (volPct) volPct.textContent = `${Math.round((audio.volume || 0) * 100)}%`;
-      try {
-        const savedVol = localStorage.getItem('player_volume');
-        if (savedVol !== null) {
-          const v = Math.max(0, Math.min(1, Number(savedVol)));
-          audio.volume = v;
-          vol.value = String(v);
-          if (volPct) volPct.textContent = `${Math.round(v * 100)}%`;
-        }
-      } catch (_) { }
+
       audio.addEventListener('play', () => { playPauseBtn.textContent = 'Tạm dừng'; });
       audio.addEventListener('pause', () => { playPauseBtn.textContent = 'Phát'; });
+      audio.addEventListener('play', updateRowPlayButtons);
+      audio.addEventListener('pause', updateRowPlayButtons);
     })();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
     fetchFolders().then(fetchFiles);
   </script>
 </body>

@@ -1,4 +1,23 @@
-const SERVER_BASE = 'http://localhost:3001';
+const DEFAULT_SERVER_BASE = 'http://localhost:3001';
+
+/**
+ * Đọc SERVER_BASE từ chrome.storage và trả về giá trị hợp lệ.
+ * @returns {Promise<string>} - URL gốc dạng http(s)://host
+ */
+function getServerBase() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.get({ serverBase: DEFAULT_SERVER_BASE }, (res) => {
+        const raw = (res && res.serverBase) ? String(res.serverBase) : DEFAULT_SERVER_BASE;
+        let u;
+        try { u = new URL(raw); } catch (_) { return resolve(DEFAULT_SERVER_BASE); }
+        if (!(u.protocol === 'http:' || u.protocol === 'https:')) return resolve(DEFAULT_SERVER_BASE);
+        const base = `${u.protocol}//${u.host}`.replace(/\/+$/, '');
+        resolve(base || DEFAULT_SERVER_BASE);
+      });
+    } catch (_) { resolve(DEFAULT_SERVER_BASE); }
+  });
+}
 
 function normalizeYouTubeUrl(raw) {
   try {
@@ -20,13 +39,20 @@ function normalizeYouTubeUrl(raw) {
 
 // duplicate checking is done by server
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.create({
     id: 'add-to-mp3',
     title: 'Thêm vào YouTube → MP3',
     contexts: ['page', 'link'],
     documentUrlPatterns: ['https://www.youtube.com/*', 'https://youtube.com/*']
   });
+  if (details && details.reason === 'install') {
+    try { chrome.runtime.openOptionsPage(); } catch (_) { }
+  }
+});
+
+chrome.action.onClicked.addListener(() => {
+  try { chrome.runtime.openOptionsPage(); } catch (_) { }
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -36,10 +62,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const rawTitle = (tab && tab.title) ? tab.title : '';
   const title = (rawTitle || '').replace(/ - YouTube$/i, '').trim();
   if (!url) return;
-  console.log('Normalized URL:', url);
   try {
-    console.log(`${SERVER_BASE}/api/extension/add`)
-    const resp = await fetch(`${SERVER_BASE}/api/extension/add`, {
+    const serverBase = await getServerBase();
+    const resp = await fetch(`${serverBase}/api/extension/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, title, bitrate: 128 }),
@@ -80,12 +105,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'addLink') {
     const url = normalizeYouTubeUrl(msg.url);
-    console.log('Normalized URL:', url);
     const bitrate = msg.bitrate || 128;
     const title = (msg.title || '').toString().trim();
     (async () => {
       try {
-        const resp = await fetch(`${SERVER_BASE}/api/extension/add`, {
+        const serverBase = await getServerBase();
+        const resp = await fetch(`${serverBase}/api/extension/add`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url, title, bitrate }),

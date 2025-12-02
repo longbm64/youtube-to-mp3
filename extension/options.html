@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cài đặt | YouTube → MP3</title>
+</head>
+
+<body>
+  <main style="max-width:640px;margin:24px auto;padding:0 16px;">
+    <h1 style="font-size:20px;margin-bottom:12px;">Thiết lập SERVER_BASE</h1>
+    <p style="color:#374151;font-size:14px;margin-bottom:16px;">Nhập địa chỉ server xử lý YouTube → MP3. Dạng hợp lệ:
+      <code>http(s)://domain</code>
+    </p>
+
+    <form id="serverForm" style="display:flex;flex-direction:column;gap:12px;">
+      <label for="serverBase" style="font-size:14px;color:#111827;">Địa chỉ server</label>
+      <input id="serverBase" type="url" placeholder="http://localhost:3001"
+        style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;" />
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="submit"
+          style="padding:8px 12px;border:0;border-radius:8px;background:#f59e0b;color:#fff;cursor:pointer;">Lưu</button>
+        <button type="button" id="resetBtn"
+          style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#111827;cursor:pointer;">Mặc
+          định</button>
+      </div>
+      <div id="msg" aria-live="polite" style="font-size:13px;min-height:20px;"></div>
+    </form>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+
+</html>
