@@ -218,6 +218,38 @@ app.get('/api/folders/files', (req, res) => {
     }
 });
 
+// Xóa file trong thư mục lưu trữ MP3
+app.post('/api/folders/delete', async (req, res) => {
+    try {
+        const rawFolder = (req.body.folder || '').toString().trim();
+        const rawName = (req.body.name || '').toString().trim();
+        if (!rawName) return res.status(400).json({ ok: false, error: 'Thiếu tên file' });
+
+        const safeFolder = rawFolder
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\.{2,}/g, '')
+            .replace(/[\x00-\x1F\x7F]/g, '')
+            .slice(0, 100);
+        let safeName = rawName
+            .replace(/[\\/]/g, '')
+            .replace(/[\x00-\x1F\x7F]/g, '')
+            .slice(0, 200);
+        if (!safeName.toLowerCase().endsWith('.mp3')) {
+            return res.status(400).json({ ok: false, error: 'Chỉ được xóa file .mp3' });
+        }
+
+        const baseDir = path.join(__dirname, '..', 'public', 'files');
+        const targetDir = safeFolder ? path.join(baseDir, safeFolder) : baseDir;
+        const fs = require('fs');
+        const filePath = path.join(targetDir, safeName);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, error: 'Không tìm thấy file' });
+        await fs.promises.unlink(filePath);
+        return res.json({ ok: true });
+    } catch (err) {
+        return res.status(500).json({ ok: false, error: err && err.message ? err.message : 'Không thể xóa file' });
+    }
+});
+
 app.get('/api/extension/title', async (req, res) => {
     try {
         const url = (req.query.url || '').toString().trim();

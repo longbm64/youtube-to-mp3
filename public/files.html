@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#f59e0b" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/assets/css/tailwind.css" />
+    <link rel="stylesheet" href="/assets/css/text-colors.css" />
 </head>
 
 <body class="min-h-screen bg-gray-50">
@@ -108,6 +109,33 @@
                         <div id="multiList" class="space-y-3"></div>
                     </div>
                 </section>
+
+                <section id="deleteSection" class="mt-6">
+                    <div class="p-4 rounded-md border bg-white space-y-3">
+                        <div class="w-full">
+                            <label for="delFolderSelect" class="block text-sm font-medium text-gray-700">Chọn folder để
+                                xóa</label>
+                            <select id="delFolderSelect"
+                                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="">(Chọn thư mục)</option>
+                            </select>
+                        </div>
+                        <div class="w-full">
+                            <label for="delSearchInput" class="block text-sm font-medium text-gray-700">Tìm theo tên
+                                file</label>
+                            <input id="delSearchInput" type="text" placeholder="Nhập tên..."
+                                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                        </div>
+                        <div id="delPaginationTop" class="flex items-center justify-between text-xs sm:text-sm mt-2">
+                        </div>
+                        <div id="delFilesList" class="space-y-2"></div>
+                        <div id="delPagination" class="flex items-center justify-between text-xs sm:text-sm mt-2"></div>
+                        <div id="delCounts" class="text-xs sm:text-sm text-black"></div>
+                        <div id="delEmptyState" class="hidden text-xs sm:text-sm text-gray-500">Không có file MP3 trong
+                            thư mục này</div>
+                        <div id="delStatus" class="text-xs sm:text-sm text-gray-600"></div>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -155,6 +183,139 @@
                 }
             });
         }
+
+        // Delete list state and logic
+        const delState = { files: [], filtered: [], page: 1, pageSize: 10 };
+        function delRenderCounts() {
+            const el = document.getElementById('delCounts');
+            el.textContent = delState.filtered.length ? `${delState.filtered.length} files` : '';
+        }
+        function delRenderPaginationInto(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const total = delState.filtered.length || 0;
+            const totalPages = Math.max(1, Math.ceil(total / delState.pageSize));
+            if (delState.page > totalPages) delState.page = totalPages;
+            if (delState.page < 1) delState.page = 1;
+            const page = delState.page;
+            el.innerHTML = '';
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-2';
+            const right = document.createElement('div');
+            right.className = 'text-black';
+            const prev = document.createElement('button');
+            prev.textContent = 'Trang trước';
+            prev.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50';
+            prev.disabled = page <= 1;
+            prev.addEventListener('click', () => { if (delState.page > 1) { delState.page--; delRenderFiles(); } });
+            const next = document.createElement('button');
+            next.textContent = 'Trang sau';
+            next.className = 'rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50';
+            next.disabled = page >= totalPages;
+            next.addEventListener('click', () => { if (delState.page < totalPages) { delState.page++; delRenderFiles(); } });
+            const info = document.createElement('span');
+            info.textContent = total ? `Trang ${page}/${totalPages}` : '';
+            left.appendChild(prev);
+            left.appendChild(next);
+            right.appendChild(info);
+            el.appendChild(left);
+            el.appendChild(right);
+        }
+        function delNormalizeText(s) {
+            return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+        }
+        function delMatchesTokens(name, q) {
+            const nameNorm = delNormalizeText(name);
+            const tokens = delNormalizeText(q).split(/\s+/).filter(Boolean);
+            return tokens.every(t => nameNorm.includes(t));
+        }
+        function delApplyFilter() {
+            const q = (document.getElementById('delSearchInput').value || '');
+            delState.filtered = q.trim() ? delState.files.filter(f => delMatchesTokens(f.name || '', q)) : delState.files.slice();
+            delState.page = 1;
+            delRenderFiles();
+        }
+        async function delFetchFolders() {
+            try {
+                const resp = await fetch('/api/folders/list');
+                const data = await resp.json();
+                const sel = document.getElementById('delFolderSelect');
+                sel.innerHTML = '<option value="">Chọn thư mục</option>' + (Array.isArray(data.items) ? data.items.map(n => `<option value="${n}">${n}</option>`).join('') : '');
+            } catch (e) { }
+        }
+        async function delFetchFiles() {
+            const sel = document.getElementById('delFolderSelect');
+            const folder = sel.value || '';
+            try {
+                const resp = await fetch(`/api/folders/files?folder=${encodeURIComponent(folder)}`);
+                const data = await resp.json();
+                delState.files = Array.isArray(data.items) ? data.items : [];
+                delApplyFilter();
+            } catch (e) { }
+        }
+        function delRenderFiles() {
+            const list = document.getElementById('delFilesList');
+            list.innerHTML = '';
+            const totalPages = Math.max(1, Math.ceil((delState.filtered.length || 0) / delState.pageSize));
+            if (delState.page > totalPages) delState.page = totalPages;
+            if (delState.page < 1) delState.page = 1;
+            const start = (delState.page - 1) * delState.pageSize;
+            const end = start + delState.pageSize;
+            const pageItems = delState.filtered.slice(start, end);
+            pageItems.forEach((it) => {
+                const row = document.createElement('div');
+                row.className = 'p-2 sm:p-3 rounded-md border bg-white flex items-center gap-2 sm:gap-3 hover:bg-amber-50 transition';
+                const name = document.createElement('div');
+                name.className = 'flex-1 text-xs sm:text-sm text-black truncate';
+                name.textContent = it.name || '';
+                name.title = it.name || '';
+                const actions = document.createElement('div');
+                actions.className = 'flex items-center gap-2';
+                const delBtn = document.createElement('button');
+                delBtn.className = 'rounded-md bg-red-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-red-700';
+                delBtn.textContent = 'Xóa';
+                delBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        const folder = (document.getElementById('delFolderSelect').value || '');
+                        const okConfirm = confirm('Xóa file này?');
+                        if (!okConfirm) return;
+                        const resp = await fetch('/api/folders/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ folder, name: it.name || '' })
+                        });
+                        const data = await resp.json();
+                        const st = document.getElementById('delStatus');
+                        if (resp.ok && data && data.ok) {
+                            const idxAll = delState.files.findIndex(f => (f.name || '') === (it.name || ''));
+                            if (idxAll >= 0) delState.files.splice(idxAll, 1);
+                            delApplyFilter();
+                            st.textContent = 'Đã xóa file';
+                            st.className = 'text-xs sm:text-sm text-green-600';
+                        } else {
+                            st.textContent = (data && data.error) ? data.error : 'Xóa thất bại';
+                            st.className = 'text-xs sm:text-sm text-red-600';
+                        }
+                    } catch (_) {
+                        const st = document.getElementById('delStatus');
+                        st.textContent = 'Lỗi kết nối server';
+                        st.className = 'text-xs sm:text-sm text-red-600';
+                    }
+                });
+                actions.appendChild(delBtn);
+                row.appendChild(name);
+                row.appendChild(actions);
+                list.appendChild(row);
+            });
+            document.getElementById('delEmptyState').classList.toggle('hidden', delState.filtered.length > 0);
+            delRenderCounts();
+            delRenderPaginationInto('delPaginationTop');
+            delRenderPaginationInto('delPagination');
+        }
+        document.getElementById('delFolderSelect').addEventListener('change', delFetchFiles);
+        document.getElementById('delSearchInput').addEventListener('input', delApplyFilter);
+        delFetchFolders().then(delFetchFiles);
     </script>
 </body>
 
