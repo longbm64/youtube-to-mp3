@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Trình phát | YouTube → MP3</title>
   <meta name="theme-color" content="#f59e0b" />
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -41,12 +41,12 @@
         </div>
 
         <div class="mt-2 sm:mt-3 flex items-center justify-between w-full py-2 sm:py-3 px-1">
-          <button id="prevBtn"
-            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Trước</button>
-          <button id="playPauseBtn"
-            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-blue-700">Phát</button>
-          <button id="nextBtn"
-            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700">Sau</button>
+          <button id="prevBtn" disabled
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">Trước</button>
+          <button id="playPauseBtn" disabled
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Phát</button>
+          <button id="nextBtn" disabled
+            class="rounded-md bg-amber-600 text-white px-2 py-1 text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">Sau</button>
         </div>
         <div class="flex items-center gap-2" style="margin-top: 10px;">
           <input type="checkbox" id="playAllCheckbox">
@@ -126,6 +126,7 @@
       document.getElementById('emptyState').classList.toggle('hidden', state.filtered.length > 0);
       renderCounts();
       updateRowPlayButtons();
+      updateControlsDisabled();
       renderPaginationInto('paginationTop');
       renderPaginationInto('pagination');
     }
@@ -182,6 +183,7 @@
       state.filtered = q.trim() ? state.files.filter(f => matchesTokens(f.name || '', q)) : state.files.slice();
       state.page = 1;
       renderFiles();
+      updateControlsDisabled();
     }
     async function fetchFolders() {
       try {
@@ -204,6 +206,7 @@
         state.files = Array.isArray(data.items) ? data.items : [];
         applyFilter();
         restoreLast();
+        updateControlsDisabled();
       } catch (e) { }
     }
     function restoreLast() {
@@ -237,6 +240,7 @@
         localStorage.setItem('player_last', JSON.stringify({ folder, name: it.name || '' }));
       } catch (_) { }
       audio.play().catch(() => { });
+      updateControlsDisabled();
     }
     function next() { if (state.currentIndex + 1 < state.filtered.length) playIndex(state.currentIndex + 1); }
     function prev() { if (state.currentIndex - 1 >= 0) playIndex(state.currentIndex - 1); }
@@ -299,6 +303,7 @@
         const d = audio.duration || 0;
         seek.value = d ? String(Math.round((audio.currentTime / d) * 100)) : '0';
         updateRowPlayButtons();
+        updateControlsDisabled();
       });
       playPauseBtn.addEventListener('click', () => {
         if (audio.paused) {
@@ -318,7 +323,24 @@
       audio.addEventListener('pause', () => { playPauseBtn.textContent = 'Phát'; });
       audio.addEventListener('play', updateRowPlayButtons);
       audio.addEventListener('pause', updateRowPlayButtons);
+      audio.addEventListener('play', updateControlsDisabled);
+      audio.addEventListener('pause', updateControlsDisabled);
     })();
+    function updateControlsDisabled() {
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playPauseBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const folder = (document.getElementById('folderSelect').value || '');
+      const hasFolder = !!folder;
+      const total = state.filtered.length || 0;
+      const hasList = total > 0;
+      const hasSelection = state.currentIndex >= 0 && state.currentIndex < total;
+
+      const disableAll = !(hasFolder && hasList);
+      prevBtn.disabled = disableAll || !hasSelection || state.currentIndex <= 0;
+      playBtn.disabled = disableAll || !hasSelection;
+      nextBtn.disabled = disableAll || !hasSelection || state.currentIndex >= (total - 1);
+    }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
