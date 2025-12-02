@@ -27,6 +27,48 @@ app.get('/extension.crx', (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+// Alias mới: youtube-to-mp3.crx (giữ file vật lý cũ, đổi tên file tải về)
+app.get('/youtube-to-mp3.crx', (req, res) => {
+    try {
+        const fs = require('fs');
+        const filePath = path.join(__dirname, '..', 'extension.crx');
+        if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+        res.setHeader('Content-Type', 'application/x-chrome-extension');
+        res.setHeader('Content-Disposition', 'attachment; filename="youtube-to-mp3.crx"');
+        res.sendFile(filePath);
+    } catch (_) {
+        res.status(500).send('Server error');
+    }
+});
+
+// Phục vụ bản ZIP để tải về
+app.get('/youtube-to-mp3.zip', (req, res) => {
+    try {
+        const fs = require('fs');
+        const filePath = path.join(__dirname, '..', 'youtube-to-mp3.zip');
+        if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="youtube-to-mp3.zip"');
+        res.sendFile(filePath);
+    } catch (_) {
+        res.status(500).send('Server error');
+    }
+});
+
+// Phục vụ zip thư mục extension
+app.get('/extension.zip', (req, res) => {
+    try {
+        const fs = require('fs');
+        const filePath = path.join(__dirname, '..', 'extension.zip');
+        if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename="extension.zip"');
+        res.sendFile(filePath);
+    } catch (_) {
+        res.status(500).send('Server error');
+    }
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Đăng ký route chuyển đổi
