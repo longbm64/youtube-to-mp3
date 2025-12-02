@@ -157,6 +157,31 @@ app.get('/api/urls/list', (req, res) => {
     }
 });
 
+app.post('/api/urls/update', async (req, res) => {
+    try {
+        const content = (req.body.content || '').toString();
+        const lines = content.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        const out = [];
+        for (const line of lines) {
+            const m = line.match(/https?:\/\/\S+/);
+            const url = m ? m[0] : '';
+            if (!url) continue;
+            let title = '';
+            const tMatch = line.split(url)[1] || '';
+            const t2 = tMatch.match(/<--\s*(.*?)\s*-->/);
+            if (t2 && t2[1]) title = t2[1];
+            out.push({ url, title, bitrate: 128, ts: Date.now() });
+        }
+        const fs = require('fs');
+        const filePath = path.join(__dirname, '..', 'listUrl.txt');
+        const data = out.map(o => JSON.stringify(o)).join('\n') + (out.length ? '\n' : '');
+        await fs.promises.writeFile(filePath, data, 'utf8');
+        return res.json({ ok: true, updated: out.length });
+    } catch (err) {
+        return res.status(500).json({ ok: false, error: err && err.message ? err.message : 'Không thể cập nhật' });
+    }
+});
+
 app.get('/api/folders/list', (req, res) => {
     try {
         const fs = require('fs');

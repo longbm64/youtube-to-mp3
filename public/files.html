@@ -30,6 +30,10 @@
                         <textarea id="urls" name="urls" rows="4"
                             placeholder="https://www.youtube.com/watch?v=...\nhttps://youtu.be/..."
                             class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        <button type="button" id="updateUrlsBtn"
+                            class="mt-1 rounded-md bg-amber-600 text-white px-3 py-2 text-sm hover:bg-amber-700">Cập
+                            nhật
+                            danh sách</button>
                     </div>
 
                     <div class="flex gap-4">
@@ -64,6 +68,7 @@
                         <button type="button" id="saveMultiBtn" class="btn btn-blue group">
                             <span>Tải files</span>
                         </button>
+
                         <span id="status" class="text-sm text-gray-600"></span>
                     </div>
 
@@ -119,9 +124,36 @@
         }
         const installBtn = document.getElementById('installExtBtn');
         const extGuide = document.getElementById('extGuide');
+        const updateBtn = document.getElementById('updateUrlsBtn');
+        const urlsInput = document.getElementById('urls');
         if (installBtn) {
             installBtn.addEventListener('click', () => {
                 if (extGuide) extGuide.classList.remove('hidden');
+            });
+        }
+        if (updateBtn) {
+            updateBtn.addEventListener('click', async () => {
+                try {
+                    const body = { content: urlsInput.value || '' };
+                    const resp = await fetch('/api/urls/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await resp.json();
+                    const st = document.getElementById('status');
+                    if (resp.ok && data && data.ok) {
+                        st.textContent = `Đã cập nhật ${data.updated} dòng`;
+                        st.className = 'text-sm text-green-600';
+                    } else {
+                        st.textContent = data && data.error ? data.error : 'Cập nhật thất bại';
+                        st.className = 'text-sm text-red-600';
+                    }
+                } catch (e) {
+                    const st = document.getElementById('status');
+                    st.textContent = 'Lỗi kết nối server';
+                    st.className = 'text-sm text-red-600';
+                }
             });
         }
     </script>
