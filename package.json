@@ -5,6 +5,7 @@
     "type": "commonjs",
     "scripts": {
         "dev": "node src/server.js",
+        "start": "node src/server.js",
         "build:css": "tailwindcss -c tailwind.config.js -i ./src/styles/input.css -o ./public/assets/css/tailwind.css --minify"
     },
     "dependencies": {
